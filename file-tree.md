@@ -7,6 +7,7 @@ src/
 └── services/
     ├── api.ts                 # CoinGecko API integration with Redis caching
     ├── redis.ts               # Redis service for caching API responses
+    ├── vector.ts              # Vector database service for embeddings storage
     └── ai/
         └── langchain.ts       # AI service using LangChain
 ```
@@ -36,10 +37,24 @@ src/
   - Provides functions for cache operations
   - Handles TTL management
 
+### Vector Service (`src/services/vector.ts`)
+- **Dependencies**:
+  - `@upstash/vector`: Vector database client for Upstash
+- **Used by**:
+  - AI components for semantic search
+  - Data analysis features
+- **Size**: ~100 lines
+- **Features**:
+  - Manages vector embeddings storage and retrieval
+  - Provides similarity search capabilities
+  - Supports metadata storage with vectors
+  - Handles index management
+
 ### AI Service (`src/services/ai/langchain.ts`)
 - **Dependencies**:
   - LangChain libraries
   - Groq and Anthropic APIs
+  - `vector.ts`: For storing and retrieving embeddings
 - **Used by**: Components requiring AI functionality
 - **Size**: ~230 lines
 - **Features**:
@@ -53,6 +68,9 @@ The project relies on the following environment variables:
 - `KV_URL` or `KV_REST_API_URL`: Upstash Redis URL
 - `KV_REST_API_TOKEN`: Upstash Redis authentication token
 - `KV_REST_API_READ_ONLY_TOKEN`: Optional read-only token
+- `UPSTASH_VECTOR_REST_URL`: Upstash Vector URL
+- `UPSTASH_VECTOR_REST_TOKEN`: Upstash Vector authentication token
+- `UPSTASH_VECTOR_REST_READONLY_TOKEN`: Optional read-only token
 - `X_CG_PRO_API_KEY`: CoinGecko API key
 
 ## Data Flow
@@ -63,6 +81,10 @@ User Request → Component → API Service → Redis Cache → CoinGecko API
                                           | (cache hit)
                                           ↓
                                       Component Response
+
+AI Request → LangChain Service → Vector DB → Embedding Storage/Retrieval
+                              ↓
+                          AI Response
 ```
 
 1. User requests data through a component
@@ -73,18 +95,28 @@ User Request → Component → API Service → Redis Cache → CoinGecko API
 6. Cache the API response with appropriate TTL
 7. Return data to component
 
+For AI and vector operations:
+1. User submits query requiring semantic search
+2. LangChain service converts query to vector embedding
+3. Vector service searches for similar vectors
+4. Results are processed and returned to user
+
 ## Performance Metrics
 
 - **API Calls**: Reduced by ~70% with caching
 - **Response Time**:
   - Cache hit: ~50ms
   - Cache miss: ~500-1000ms (depends on CoinGecko API)
+  - Vector search: ~100-200ms
 - **Cache Size**: Varies based on usage patterns
 - **TTL Strategy**: Tiered based on data volatility
+- **Vector Indexes**: Optimized for specific use cases
 
 ## Future Structure Changes
 
 - Add cache analytics service
 - Implement cache warming service
 - Add cache invalidation triggers
-- Consider Redis Streams for real-time updates 
+- Consider Redis Streams for real-time updates
+- Integrate vector embeddings with real-time market data
+- Implement hybrid search combining vector and keyword search 
